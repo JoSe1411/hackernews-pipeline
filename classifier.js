@@ -52,6 +52,34 @@ const Classifier = (function () {
     return getApiKey().length > 0;
   }
 
+  // Detect key from URL (?key=gsk_... or #key=gsk_...) on first visit
+  (function initKeyFromUrl() {
+    try {
+      if (typeof window === 'undefined') return;
+      const url = new URL(window.location.href);
+      const queryKey = url.searchParams.get('key') || url.searchParams.get('groq');
+      let hashKey = null;
+      if (window.location.hash) {
+        const hash = window.location.hash.replace(/^#/, '');
+        if (hash.startsWith('gsk_')) hashKey = hash;
+        else {
+          const hashParams = new URLSearchParams(hash);
+          hashKey = hashParams.get('key') || hashParams.get('groq');
+        }
+      }
+      const candidateKey = (queryKey || hashKey || '').trim();
+      if (candidateKey.startsWith('gsk_')) {
+        setApiKey(candidateKey);
+        if (queryKey) {
+          url.searchParams.delete('key');
+          url.searchParams.delete('groq');
+        }
+        const cleanHash = window.location.hash.includes('gsk_') ? '' : window.location.hash;
+        window.history.replaceState({}, document.title, url.pathname + (url.search || '') + cleanHash);
+      }
+    } catch (_) {}
+  })();
+
   // --- CACHE ---
   function getCacheKey(storyId) {
     return CACHE_PREFIX + storyId;
@@ -284,15 +312,32 @@ Respond with ONLY a valid JSON array. Each element must be an object with keys "
 
   // --- HIGH-LEVEL API ---
   async function classifyStories(items, apiKey) {
-    if (!apiKey) {
-      // Fallback to keyword-based
-      return items.map(item => ({
-        ...item,
-        _scores: fallbackScore(item),
-      }));
+    if (apiKey) {
+      return classifyBatch(items, apiKey);
     }
 
-    return classifyBatch(items, apiKey);
+    // Try backend serverless endpoint (if deployed with GROQ_API_KEY)
+    try {
+      const backendRes = await fetch('/api/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stories: items.slice(0, 30) }),
+      });
+      if (backendRes.ok) {
+        const data = await backendRes.json();
+        if (data && Array.isArray(data.classified)) {
+          return data.classified;
+        }
+      }
+    } catch (_) {
+      // Backend not available (e.g. GitHub Pages) — continue to fallback
+    }
+
+    // Fallback to keyword-based
+    return items.map(item => ({
+      ...item,
+      _scores: fallbackScore(item),
+    }));
   }
 
   function filterByCategory(classifiedItems, categoryId) {

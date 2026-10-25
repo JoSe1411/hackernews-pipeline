@@ -574,13 +574,8 @@
   // --- INIT ---
   updateAiPill();
 
-  if (!Classifier.hasApiKey()) {
-    // Show modal on first visit
-    showModal();
-  } else {
-    // Start loading
-    loadFeed('myfeed');
-  }
+  // Load feed immediately without blocking modal
+  loadFeed('myfeed');
 
   // Auto-refresh every 5 minutes
   setInterval(() => {
