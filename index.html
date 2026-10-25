@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HackPipe — Neo-Brutal Hacker News Pipeline</title>
+  <meta name="description" content="AI-powered neo-brutalism Hacker News pipeline that classifies stories by relevance — trending tech, AI opportunities, and job openings." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- API KEY MODAL -->
+  <div class="modal-overlay" id="api-modal" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-color-bar modal-color-bar--purple"></div>
+      <div class="modal-content">
+        <div class="modal-icon">🤖</div>
+        <h2 class="modal-title">AI CLASSIFICATION</h2>
+        <p class="modal-desc">Enter your <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq API key</a> to enable AI-powered story classification using Llama 3.1. <strong>Free tier available.</strong></p>
+        <div class="modal-input-group">
+          <label class="modal-label" for="api-key-input">GROQ API KEY</label>
+          <input type="password" class="modal-input" id="api-key-input" placeholder="gsk_xxxxxxxxxxxxxxxx" autocomplete="off" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn-modal btn-modal--primary" id="btn-save-key">ACTIVATE AI ⚡</button>
+          <button class="btn-modal btn-modal--secondary" id="btn-skip-key">SKIP (USE KEYWORDS)</button>
+        </div>
+        <p class="modal-note">Key stored locally in your browser. Never sent anywhere except Groq.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <header id="main-header">
+    <div class="header-inner">
+      <div class="logo-group">
+        <div class="logo-icon" id="logo-icon">
+          <span>⚡</span>
+        </div>
+        <h1 class="logo-text">HACK<span class="logo-accent">PIPE</span></h1>
+      </div>
+      <p class="tagline">AI-Powered Hacker News Pipeline</p>
+      <div class="header-stats" id="header-stats">
+        <div class="stat-pill stat-pill--orange">
+          <span class="stat-label">STORIES</span>
+          <span class="stat-value" id="stat-total">—</span>
+        </div>
+        <div class="stat-pill stat-pill--blue">
+          <span class="stat-label">LAST SYNC</span>
+          <span class="stat-value" id="stat-time">—</span>
+        </div>
+        <div class="stat-pill stat-pill--green">
+          <span class="stat-label">STATUS</span>
+          <span class="stat-value" id="stat-status">INIT</span>
+        </div>
+        <button class="stat-pill stat-pill--purple" id="btn-ai-settings" title="AI Settings">
+          <span class="stat-label">AI</span>
+          <span class="stat-value" id="stat-ai">OFF</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <nav id="main-nav">
+    <div class="nav-inner">
+      <button class="nav-tab nav-tab--myfeed active" data-feed="myfeed" id="tab-myfeed">
+        <span class="tab-icon">🎯</span>
+        <span class="tab-label">MY FEED</span>
+      </button>
+      <button class="nav-tab" data-feed="top" id="tab-top">
+        <span class="tab-icon">🔥</span>
+        <span class="tab-label">TOP</span>
+      </button>
+      <button class="nav-tab" data-feed="new" id="tab-new">
+        <span class="tab-icon">🆕</span>
+        <span class="tab-label">NEW</span>
+      </button>
+      <button class="nav-tab" data-feed="best" id="tab-best">
+        <span class="tab-icon">⭐</span>
+        <span class="tab-label">BEST</span>
+      </button>
+      <button class="nav-tab" data-feed="ask" id="tab-ask">
+        <span class="tab-icon">❓</span>
+        <span class="tab-label">ASK HN</span>
+      </button>
+      <button class="nav-tab" data-feed="show" id="tab-show">
+        <span class="tab-icon">🚀</span>
+        <span class="tab-label">SHOW HN</span>
+      </button>
+      <button class="nav-tab" data-feed="job" id="tab-job">
+        <span class="tab-icon">💼</span>
+        <span class="tab-label">JOBS</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- RELEVANCE FILTER BAR -->
+  <div class="filter-bar" id="filter-bar">
+    <div class="filter-inner">
+      <span class="filter-label">FILTER:</span>
+      <button class="filter-chip active" data-filter="all" id="filter-all">
+        <span>ALL RELEVANT</span>
+      </button>
+      <button class="filter-chip filter-chip--orange" data-filter="hot" id="filter-hot">
+        <span>🔥 HOT & TRENDING</span>
+        <span class="filter-count" id="count-hot">0</span>
+      </button>
+      <button class="filter-chip filter-chip--purple" data-filter="ai" id="filter-ai">
+        <span>🤖 AI OPPORTUNITIES</span>
+        <span class="filter-count" id="count-ai">0</span>
+      </button>
+      <button class="filter-chip filter-chip--green" data-filter="jobs" id="filter-jobs">
+        <span>💼 JOBS</span>
+        <span class="filter-count" id="count-jobs">0</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- PIPELINE MARQUEE -->
+  <div class="marquee-bar" id="marquee-bar">
+    <div class="marquee-track" id="marquee-track">
+      <span class="marquee-text">⚡ LOADING PIPELINE... ⚡ FETCHING LATEST FROM HACKER NEWS... ⚡ STAND BY...</span>
+    </div>
+  </div>
+
+  <!-- AI CLASSIFICATION STATUS -->
+  <div class="ai-status-bar" id="ai-status-bar" style="display:none;">
+    <div class="ai-status-inner">
+      <div class="ai-status-spinner"></div>
+      <span class="ai-status-text" id="ai-status-text">Classifying stories with AI...</span>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <main id="main-content">
+    <!-- Loading State -->
+    <div class="loader-container" id="loader">
+      <div class="loader-box">
+        <div class="loader-spinner"></div>
+        <p class="loader-text">FETCHING STORIES...</p>
+      </div>
+    </div>
+
+    <!-- Stories Grid -->
+    <div class="stories-grid" id="stories-grid"></div>
+
+    <!-- Load More -->
+    <div class="load-more-container" id="load-more-container" style="display:none;">
+      <button class="btn-load-more" id="btn-load-more">
+        LOAD MORE STORIES ↓
+      </button>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer id="main-footer">
+    <div class="footer-inner">
+      <p class="footer-text">HACKPIPE — Powered by <a href="https://news.ycombinator.com" target="_blank" rel="noopener">Hacker News API</a> + <a href="https://groq.com" target="_blank" rel="noopener">Groq AI</a></p>
+      <p class="footer-sub">Built with raw HTML, CSS & JS. No frameworks. Pure brutalism.</p>
+    </div>
+  </footer>
+
+  <!-- SCROLL TO TOP -->
+  <button class="scroll-top-btn" id="scroll-top-btn" aria-label="Scroll to top">↑</button>
+
+  <script src="classifier.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
